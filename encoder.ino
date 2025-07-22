@@ -15,30 +15,34 @@ void setupEncoder() {
 }
 
 void loopEncoder() {
-  enc.tick(); // Must be called in the main loop
+  enc.tick();
 
-  // --- Encoder Rotation ---
-  if (enc.isRight() || enc.isLeft()) {
-    bool isRight = enc.isRight();
-
-    switch (currentMenu) {
-      case MENU_RPM:
-        rpm += isRight ? 100 : -100;
-        if (rpm > 8000) rpm = 8000;
-        if (rpm < 0) rpm = 0;
-        setRpm(rpm);
-        break;
-      case MENU_GEN_MODE:
-        int genTypeInt = (int)currentGeneratorType + (isRight ? 1 : -1);
-        if (genTypeInt >= GEN_TYPE_CAN + 1) genTypeInt = 0;
-        if (genTypeInt < 0) genTypeInt = GEN_TYPE_CAN;
-        setGeneratorType((GeneratorType)genTypeInt);
-        break;
+  if (isInEditMode) {
+    // --- In Edit Mode ---
+    if (enc.isRight()) {
+      (*valueToEdit)++; // Increment the value
     }
-  }
-
-  // --- Encoder Button Click ---
-  if (enc.isClick()) {
-    menuSelect(); // Go to the next menu item
+    if (enc.isLeft()) {
+      (*valueToEdit)--; // Decrement the value
+    }
+    if (enc.isClick()) {
+      exitEditMode(); // Exit edit mode on click
+      // Here you might want to call the function to update the hardware
+      // e.g., setRpm(rpm);
+    }
+  } else {
+    // --- In Navigation Mode ---
+    if (enc.isRight()) {
+      navigateNext();
+    }
+    if (enc.isLeft()) {
+      navigatePrev();
+    }
+    if (enc.isClick()) {
+      enterMenu();
+    }
+    if (enc.isHolded()) {
+      goBack();
+    }
   }
 }
