@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engine Emulator Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Engine Emulator Dashboard</h1>
+    </header>
+    <main>
+        <div class="widget-container">
+            <div class="widget">
+                <h2>RPM</h2>
+                <p id="rpm-value">--</p>
+            </div>
+            <div class="widget">
+                <h2>Generator</h2>
+                <p>Mode: <span id="gen-mode">--</span></p>
+                <p>Duty: <span id="gen-duty">--</span>%</p>
+            </div>
+            <div class="widget">
+                <h2>System Status</h2>
+                <p id="wifi-status">Connecting...</p>
+            </div>
+        </div>
+        <div class="log-container">
+            <h2>Live Log</h2>
+            <pre id="log-box"></pre>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

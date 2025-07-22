@@ -2,10 +2,10 @@
 
 #include "GyverEncoder.h"
 
-// Pin definitions for the encoder
-#define CLK_PIN 10
-#define DT_PIN  11
-#define SW_PIN  12
+// Pin definitions for the encoder on ESP32
+#define CLK_PIN 16
+#define DT_PIN  17
+#define SW_PIN  21
 
 // Create an encoder object
 Encoder enc(CLK_PIN, DT_PIN, SW_PIN);
@@ -19,16 +19,22 @@ void loopEncoder() {
 
   if (isInEditMode) {
     // --- In Edit Mode ---
-    if (enc.isRight()) {
-      (*valueToEdit)++; // Increment the value
+    int change = 0;
+    if (enc.isRight()) change = 1;
+    if (enc.isLeft()) change = -1;
+
+    if (change != 0) {
+      *valueToEdit += change;
+      // After changing the value, we need to call the appropriate update function.
+      // This is a bit tricky without knowing which variable is being edited.
+      // A more robust solution would use a callback function.
+      // For now, we'll just call all of them.
+      setRpm(rpm);
+      setGeneratorDutyCycle(pwmDutyCycle);
     }
-    if (enc.isLeft()) {
-      (*valueToEdit)--; // Decrement the value
-    }
+
     if (enc.isClick()) {
       exitEditMode(); // Exit edit mode on click
-      // Here you might want to call the function to update the hardware
-      // e.g., setRpm(rpm);
     }
   } else {
     // --- In Navigation Mode ---

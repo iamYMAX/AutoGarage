@@ -1,7 +1,7 @@
 // Module for generating the crankshaft position sensor signal.
 
-// Pin definitions
-const int CRANK_SIGNAL_PIN = 3; // PWM output pin for the crank signal
+// Pin definitions for ESP32
+const int CRANK_SIGNAL_PIN = 27; // A suitable GPIO for PWM/pulse generation
 
 // Crankshaft signal parameters
 extern int rpm; // Defined in main.ino
@@ -66,6 +66,9 @@ void generateCrankSignal() {
 }
 
 void setRpm(int newRpm) {
-  rpm = newRpm;
-  calculateCrankPulseInterval();
+  if (rpm != newRpm) {
+    rpm = newRpm;
+    calculateCrankPulseInterval();
+    notifyClients(); // Notify web clients of the change
+  }
 }

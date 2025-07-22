@@ -3,8 +3,10 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
-#define CAN_CS_PIN 9
-#define CAN_INT_PIN 8
+// Pin definitions for ESP32 (using default VSPI pins)
+#define CAN_CS_PIN 5
+#define CAN_INT_PIN 15
+// SPI pins for VSPI are: SCK(18), MISO(19), MOSI(23)
 
 MCP2515 mcp2515(CAN_CS_PIN);
 struct can_frame canMsg;

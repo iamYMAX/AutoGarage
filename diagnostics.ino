@@ -1,8 +1,8 @@
 // Module for diagnostics and monitoring.
 
-// Pin definitions
-const int VOLTAGE_PIN = A6;
-const int CURRENT_PIN = A7;
+// Pin definitions for ESP32
+const int VOLTAGE_PIN = 35; // ADC1_CH7
+const int CURRENT_PIN = 32; // ADC1_CH4
 
 // Diagnostic variables
 float voltage = 0.0;

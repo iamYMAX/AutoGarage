@@ -1,9 +1,11 @@
 // Module for generating the generator regulator signal.
 
-// Pin definitions
-#define PWM_RELAY_PIN 5
-#define ON_OFF_RELAY_PIN 6
-#define ANALOG_FEEDBACK_PIN A1
+// Pin definitions for ESP32
+// ESP32 uses ledc for PWM, which requires channel assignment.
+// This is a conceptual change for now.
+#define PWM_RELAY_PIN 25 // A common GPIO pin for PWM on ESP32
+#define ON_OFF_RELAY_PIN 26
+#define ANALOG_FEEDBACK_PIN 34 // ADC1_CH6, suitable for ADC on ESP32
 
 // Enum for generator control types
 enum GeneratorType {
@@ -50,16 +52,20 @@ void loopGenerator() {
 
 // Function to change the generator type from the menu
 void setGeneratorType(GeneratorType newType) {
-  currentGeneratorType = newType;
-  // Potentially disable outputs of other types when switching
+  if (currentGeneratorType != newType) {
+    currentGeneratorType = newType;
+    // Potentially disable outputs of other types when switching
+    notifyClients();
+  }
 }
 
 // --- PWM Control ---
 void setGeneratorDutyCycle(int dutyCycle) {
-  if (dutyCycle >= 0 && dutyCycle <= 100) {
+  if (pwmDutyCycle != dutyCycle && dutyCycle >= 0 && dutyCycle <= 100) {
     pwmDutyCycle = dutyCycle;
     int pwmValue = map(pwmDutyCycle, 0, 100, 0, 255);
     analogWrite(PWM_RELAY_PIN, pwmValue);
+    notifyClients();
   }
 }
 
