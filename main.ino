@@ -30,6 +30,7 @@ int totalTeeth = 60;
 int missingTeeth = 2;
 int injectionMode = 0;
 unsigned int pulseWidth = 5;
+unsigned int dwellTime_ms = 3; // For menu editing
 
 void setup() {
   Serial.begin(115200);
@@ -43,6 +44,7 @@ void setup() {
   setupCrank();
   setupInjectors();
   setupGenerator();
+  setupIgnition(); // Add ignition setup
   setupMenu();
   setupEncoder();
   setupCan();
@@ -58,6 +60,7 @@ void loop() {
   loopEncoder(); // Read encoder first
   loopCrank();
   loopGenerator();
+  loopIgnition(); // Handle ignition timing
   loopMenu();
   loopCan();
   loopLogger();

@@ -49,6 +49,12 @@ void generateCrankSignal() {
     triggerInjectors();
   }
 
+  // Define when to fire the ignition. e.g., 10 teeth before the missing teeth gap (TDC)
+  const int ignitionTriggerTooth = totalTeeth - missingTeeth - 10;
+  if (toothCounter == ignitionTriggerTooth) {
+    triggerIgnition();
+  }
+
   // Simulate the missing teeth gap
   if (toothCounter < (totalTeeth - missingTeeth)) {
     // Generate a pulse for a regular tooth

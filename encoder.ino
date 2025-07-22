@@ -24,13 +24,19 @@ void loopEncoder() {
     if (enc.isLeft()) change = -1;
 
     if (change != 0) {
-      *valueToEdit += change;
-      // After changing the value, we need to call the appropriate update function.
-      // This is a bit tricky without knowing which variable is being edited.
-      // A more robust solution would use a callback function.
-      // For now, we'll just call all of them.
+      if (currentEditType == EDIT_INT) {
+        *(int*)valueToEdit += change;
+      } else {
+        // Handle unsigned int, preventing underflow
+        if (change > 0 || (*(unsigned int*)valueToEdit) > 0) {
+           *(unsigned int*)valueToEdit += change;
+        }
+      }
+
+      // Call all setters - a more advanced implementation would use callbacks
       setRpm(rpm);
       setGeneratorDutyCycle(pwmDutyCycle);
+      setDwellTime(dwellTime_ms);
     }
 
     if (enc.isClick()) {

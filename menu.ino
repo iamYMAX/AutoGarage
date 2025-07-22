@@ -33,13 +33,14 @@ void actionSelectProfile();
 void actionSelectGenType();
 void actionEditRpm();
 void actionEditGenDuty();
+void actionEditDwellTime();
 void actionToggleLogger();
 void actionResetSettings();
 void dummyAction();
 
 // --- Menu Definition ---
 // Declare all menu items
-MenuItem mainMenu, profilesMenu, generatorMenu, crankMenu, injectorsMenu, canMenu, diagMenu, settingsMenu;
+MenuItem mainMenu, profilesMenu, generatorMenu, crankMenu, ignitionMenu, injectorsMenu, canMenu, diagMenu, settingsMenu;
 // Profiles
 MenuItem profile1, profile2, profile3;
 // Generator
@@ -47,6 +48,8 @@ MenuItem genType, genPwmDuty, genCanId;
 MenuItem genTypePwm, genTypeOnOff, genTypeCan;
 // Crank
 MenuItem crankRpm, crankType, crankType60_2, crankType36_1;
+// Ignition
+MenuItem ignDwell, ignTiming;
 // Injectors
 MenuItem injCount, injSim, injClean;
 // CAN/Logger
@@ -62,7 +65,8 @@ MenuItem langRu, langEn;
 MenuItem mainMenu =      {"Profiles",      nullptr,      &profilesMenu,   nullptr,         dummyAction};
   MenuItem profilesMenu =  {"Profiles",      &mainMenu,    &profile1,       &generatorMenu,  dummyAction};
   MenuItem generatorMenu = {"Generator",     &mainMenu,    &genType,        &crankMenu,      dummyAction};
-  MenuItem crankMenu =     {"Crankshaft",    &mainMenu,    &crankRpm,       &injectorsMenu,  dummyAction};
+  MenuItem crankMenu =     {"Crankshaft",    &mainMenu,    &crankRpm,       &ignitionMenu,  dummyAction};
+  MenuItem ignitionMenu =  {"Ignition",      &mainMenu,    &ignDwell,       &injectorsMenu,  dummyAction};
   MenuItem injectorsMenu = {"Injectors",     &mainMenu,    &injCount,       &canMenu,        dummyAction};
   MenuItem canMenu =       {"CAN/Logger",    &mainMenu,    &loggerToggle,   &diagMenu,       dummyAction};
   MenuItem diagMenu =      {"Diagnostics",   &mainMenu,    &diagGenVoltage, &settingsMenu,   dummyAction};
@@ -85,6 +89,9 @@ MenuItem crankRpm =    {"- RPM",         &crankMenu,   nullptr,         &crankTy
 MenuItem crankType =   {"- Type",        &crankMenu,   &crankType60_2,  nullptr,         dummyAction};
   MenuItem crankType60_2={"-- 60-2",       &crankType,   nullptr,         &crankType36_1,  dummyAction};
   MenuItem crankType36_1={"-- 36-1",       &crankType,   nullptr,         nullptr,         dummyAction};
+// Ignition
+MenuItem ignDwell =    {"- Dwell Time",  &ignitionMenu, nullptr,        &ignTiming,      actionEditDwellTime};
+MenuItem ignTiming =   {"- Timing Adv",  &ignitionMenu, nullptr,        nullptr,         dummyAction};
 // Injectors
 MenuItem injCount =    {"- Quantity",    &injectorsMenu,nullptr,         &injSim,         dummyAction};
 MenuItem injSim =      {"- Simulate",    &injectorsMenu,nullptr,         &injClean,       dummyAction};
@@ -111,12 +118,22 @@ MenuItem* currentMenu = &mainMenu;
 
 // --- Edit Mode Variables ---
 bool isInEditMode = false;
-int* valueToEdit = nullptr;
+void* valueToEdit = nullptr; // Use void pointer to handle different types
+enum EditValueType { EDIT_INT, EDIT_UINT };
+EditValueType currentEditType;
 const char* editTitle = "";
 
 void enterEditMode(int* value, const char* title) {
   isInEditMode = true;
   valueToEdit = value;
+  currentEditType = EDIT_INT;
+  editTitle = title;
+}
+
+void enterEditMode(unsigned int* value, const char* title) {
+  isInEditMode = true;
+  valueToEdit = value;
+  currentEditType = EDIT_UINT;
   editTitle = title;
 }
 
@@ -185,7 +202,11 @@ void updateDisplay() {
     // Value
     display.setTextSize(3);
     display.setCursor(20, 30);
-    display.println(*valueToEdit);
+    if (currentEditType == EDIT_INT) {
+      display.println(*(int*)valueToEdit);
+    } else {
+      display.println(*(unsigned int*)valueToEdit);
+    }
 
     // Arrows hint
     display.setTextSize(1);
@@ -309,6 +330,10 @@ void actionEditRpm() {
 
 void actionEditGenDuty() {
   enterEditMode(&pwmDutyCycle, "Duty Cycle");
+}
+
+void actionEditDwellTime() {
+  enterEditMode(&dwellTime_ms, "Dwell (ms)");
 }
 
 void actionToggleLogger() {

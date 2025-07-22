@@ -10,8 +10,9 @@ struct Profile {
   int pwmDutyCycle;
   int injectionMode;
   unsigned int pulseWidth;
-  GeneratorType generatorType; // Added generator type
-  int checksum; // To verify data integrity
+  GeneratorType generatorType;
+  unsigned int dwellTime_ms; // Added ignition dwell time
+  int checksum;
 };
 
 void saveProfile(int profileNumber) {
@@ -23,9 +24,10 @@ void saveProfile(int profileNumber) {
   currentProfile.injectionMode = injectionMode;
   currentProfile.pulseWidth = pulseWidth;
   currentProfile.generatorType = currentGeneratorType;
+  currentProfile.dwellTime_ms = dwellTime_ms;
 
   // Calculate a simple checksum
-  currentProfile.checksum = currentProfile.rpm + currentProfile.pwmDutyCycle + (int)currentProfile.generatorType;
+  currentProfile.checksum = currentProfile.rpm + currentProfile.pwmDutyCycle + (int)currentProfile.generatorType + currentProfile.dwellTime_ms;
 
   int address = profileNumber * sizeof(Profile);
   EEPROM.put(address, currentProfile);
@@ -37,7 +39,7 @@ bool loadProfile(int profileNumber) {
   EEPROM.get(address, loadedProfile);
 
   // Verify checksum
-  if (loadedProfile.checksum == (loadedProfile.rpm + loadedProfile.pwmDutyCycle + (int)loadedProfile.generatorType)) {
+  if (loadedProfile.checksum == (loadedProfile.rpm + loadedProfile.pwmDutyCycle + (int)loadedProfile.generatorType + loadedProfile.dwellTime_ms)) {
     rpm = loadedProfile.rpm;
     totalTeeth = loadedProfile.totalTeeth;
     missingTeeth = loadedProfile.missingTeeth;
@@ -45,11 +47,13 @@ bool loadProfile(int profileNumber) {
     injectionMode = loadedProfile.injectionMode;
     pulseWidth = loadedProfile.pulseWidth;
     currentGeneratorType = loadedProfile.generatorType;
+    dwellTime_ms = loadedProfile.dwellTime_ms;
 
     // Update modules with new values
     setRpm(rpm);
     setGeneratorDutyCycle(pwmDutyCycle);
     setGeneratorType(currentGeneratorType);
+    setDwellTime(dwellTime_ms);
     return true; // Load successful
   }
   return false; // Load failed (checksum mismatch)
