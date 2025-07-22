@@ -1,9 +1,14 @@
 // Module for handling the user menu and display.
 
-#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-// Initialize the I2C display. Address 0x27, 16 columns, 2 rows.
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+// OLED Display settings
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Advanced Menu Structure using structs
 
@@ -122,12 +127,17 @@ void exitEditMode() {
 
 
 void setupMenu() {
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Emulator v2.0");
-  lcd.setCursor(0, 1);
-  lcd.print("Starting...");
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println("Emulator v3.0");
+  display.println("OLED Ready");
+  display.display();
   delay(2000);
 }
 
@@ -141,58 +151,116 @@ void loopMenu() {
 // Pointer to the first item visible on the screen (for scrolling)
 MenuItem* topVisibleItem = &mainMenu;
 
+void drawStatusBar() {
+  display.drawFastHLine(0, 7, display.width(), SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+
+  // Time from RTC
+  // DateTime now = rtc.now();
+  // display.print(now.hour());
+  // display.print(":");
+  // display.print(now.minute());
+
+  // Wi-Fi Status Icon
+  display.setCursor(110, 0);
+  if (WiFi.status() == WL_CONNECTED) {
+    display.print("WiFi"); // Placeholder for a real icon
+  } else {
+    display.print("----");
+  }
+}
+
 void updateDisplay() {
-  lcd.clear();
+  display.clearDisplay();
+  drawStatusBar();
 
   if (isInEditMode) {
-    lcd.setCursor(0, 0);
-    lcd.print("Editing:");
-    lcd.setCursor(0, 1);
-    lcd.print(editTitle);
-    lcd.setCursor(10, 1);
-    lcd.print(*valueToEdit);
-    lcd.print("    ");
+    // Title
+    display.setTextSize(2);
+    display.setCursor(0, 0);
+    display.println(editTitle);
+    display.drawFastHLine(0, 18, display.width(), SSD1306_WHITE);
+
+    // Value
+    display.setTextSize(3);
+    display.setCursor(20, 30);
+    display.println(*valueToEdit);
+
+    // Arrows hint
+    display.setTextSize(1);
+    display.setCursor(0, 30);
+    display.println("^");
+    display.setCursor(0, 45);
+    display.println("v");
+
   } else {
+    display.setTextSize(1);
     MenuItem* item = topVisibleItem;
     int i = 0;
-    while (item != nullptr && i < 2) { // Assuming a 16x2 display
-      lcd.setCursor(0, i);
+    // We can display up to 6 menu items on a 128x64 screen (with a status bar)
+    while (item != nullptr && i < 6) {
+      display.setCursor(0, 8 + (i * 9)); // Start below status bar, 9 pixels per line
       if (item == currentMenu) {
-        lcd.print(">");
+        // Invert text for selection
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
+        display.print(">");
+        display.print(item->title);
+        display.setTextColor(SSD1306_WHITE);
       } else {
-        lcd.print(" ");
+        display.print(" ");
+        display.print(item->title);
       }
-      lcd.print(item->title);
+
+      // Special handling to display current value next to the menu item
+      if (item == &crankRpm) {
+        display.setCursor(80, 8 + (i * 9));
+        display.print(rpm);
+      }
+      if (item == &genPwmDuty) {
+        display.setCursor(80, 8 + (i * 9));
+        display.print(pwmDutyCycle);
+        display.print("%");
+      }
+
       item = item->nextSibling;
       i++;
     }
   }
+
+  display.display();
 }
 
 void navigateNext() {
   if (currentMenu->nextSibling != nullptr) {
+    // Find how many items are visible
+    int visibleItems = 0;
+    MenuItem* temp = topVisibleItem;
+    while(temp != nullptr && visibleItems < 6) {
+        if(temp == currentMenu) break;
+        temp = temp->nextSibling;
+        visibleItems++;
+    }
+
     currentMenu = currentMenu->nextSibling;
-    // Scroll the view if necessary
-    // A simple implementation: if we move off the bottom, scroll down.
-    if (currentMenu != topVisibleItem && currentMenu != topVisibleItem->nextSibling) {
-        topVisibleItem = currentMenu->parent->firstChild;
-        while(topVisibleItem->nextSibling != currentMenu)
-        {
-            topVisibleItem = topVisibleItem->nextSibling;
-        }
+    // If selection goes off screen, scroll
+    if (visibleItems >= 5) {
+      topVisibleItem = topVisibleItem->nextSibling;
     }
   }
 }
 
 void navigatePrev() {
-  if (currentMenu != topVisibleItem) {
-      MenuItem* prev = topVisibleItem;
-      while(prev->nextSibling != currentMenu)
-      {
-          prev = prev->nextSibling;
-      }
-      currentMenu = prev;
-  }
+    if (currentMenu->parent != nullptr && currentMenu != currentMenu->parent->firstChild) {
+        MenuItem* prev = currentMenu->parent->firstChild;
+        while (prev != nullptr && prev->nextSibling != currentMenu) {
+            prev = prev->nextSibling;
+        }
+        currentMenu = prev;
+        if (currentMenu == topVisibleItem->parent->firstChild) {
+            topVisibleItem = currentMenu;
+        }
+    }
 }
 
 
@@ -210,7 +278,7 @@ void enterMenu() {
 void goBack() {
   if (currentMenu->parent != nullptr) {
     currentMenu = currentMenu->parent;
-    topVisibleItem = currentMenu;
+    topVisibleItem = currentMenu->parent->firstChild; // Show parent menu from the top
   }
 }
 
