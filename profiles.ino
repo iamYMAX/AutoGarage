@@ -10,21 +10,22 @@ struct Profile {
   int pwmDutyCycle;
   int injectionMode;
   unsigned int pulseWidth;
-  // Add other settings as needed
+  GeneratorType generatorType; // Added generator type
   int checksum; // To verify data integrity
 };
 
 void saveProfile(int profileNumber) {
   Profile currentProfile;
   currentProfile.rpm = rpm;
-  // currentProfile.totalTeeth = totalTeeth; // Assuming these are global
-  // currentProfile.missingTeeth = missingTeeth;
+  currentProfile.totalTeeth = totalTeeth;
+  currentProfile.missingTeeth = missingTeeth;
   currentProfile.pwmDutyCycle = pwmDutyCycle;
-  // currentProfile.injectionMode = injectionMode;
-  // currentProfile.pulseWidth = pulseWidth;
+  currentProfile.injectionMode = injectionMode;
+  currentProfile.pulseWidth = pulseWidth;
+  currentProfile.generatorType = currentGeneratorType;
 
   // Calculate a simple checksum
-  currentProfile.checksum = currentProfile.rpm + currentProfile.pwmDutyCycle;
+  currentProfile.checksum = currentProfile.rpm + currentProfile.pwmDutyCycle + (int)currentProfile.generatorType;
 
   int address = profileNumber * sizeof(Profile);
   EEPROM.put(address, currentProfile);
@@ -36,14 +37,19 @@ bool loadProfile(int profileNumber) {
   EEPROM.get(address, loadedProfile);
 
   // Verify checksum
-  if (loadedProfile.checksum == (loadedProfile.rpm + loadedProfile.pwmDutyCycle)) {
+  if (loadedProfile.checksum == (loadedProfile.rpm + loadedProfile.pwmDutyCycle + (int)loadedProfile.generatorType)) {
     rpm = loadedProfile.rpm;
+    totalTeeth = loadedProfile.totalTeeth;
+    missingTeeth = loadedProfile.missingTeeth;
     pwmDutyCycle = loadedProfile.pwmDutyCycle;
-    // Update other variables...
+    injectionMode = loadedProfile.injectionMode;
+    pulseWidth = loadedProfile.pulseWidth;
+    currentGeneratorType = loadedProfile.generatorType;
 
     // Update modules with new values
     setRpm(rpm);
     setGeneratorDutyCycle(pwmDutyCycle);
+    setGeneratorType(currentGeneratorType);
     return true; // Load successful
   }
   return false; // Load failed (checksum mismatch)

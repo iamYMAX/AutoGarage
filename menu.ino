@@ -6,7 +6,14 @@
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Menu state variables
-int currentMenu = 0;
+enum MenuState {
+  MENU_RPM,
+  MENU_GEN_MODE,
+  // Add more menu items here
+  MENU_ITEM_COUNT
+};
+MenuState currentMenu = MENU_RPM;
+
 
 void setupMenu() {
   lcd.init();
@@ -25,18 +32,36 @@ void loopMenu() {
 }
 
 void updateDisplay() {
-  // For now, just display the RPM.
-  // This will be expanded to show the full menu.
+  lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("RPM: ");
-  lcd.print(rpm); // Assumes 'rpm' is a global variable from crank.ino
-  lcd.print("    "); // Clear previous digits
 
-  lcd.setCursor(0, 1);
-  lcd.print("Mode: Crank Gen");
+  switch (currentMenu) {
+    case MENU_RPM:
+      lcd.print("> RPM: ");
+      lcd.print(rpm);
+      lcd.print("    ");
+      break;
+    case MENU_GEN_MODE:
+      lcd.print("> Gen Mode: ");
+      switch (currentGeneratorType) {
+        case GEN_TYPE_PWM: lcd.print("PWM"); break;
+        case GEN_TYPE_ON_OFF: lcd.print("ON/OFF"); break;
+        case GEN_TYPE_CAN: lcd.print("CAN"); break;
+      }
+      break;
+  }
 }
 
-// Stubs for menu navigation functions
-void menuNext() {}
-void menuPrev() {}
-void menuSelect() {}
+// Functions to navigate the menu, called from encoder.ino
+void menuNext() {
+  currentMenu = (MenuState)(((int)currentMenu + 1) % MENU_ITEM_COUNT);
+}
+
+void menuPrev() {
+  // This is handled by the encoder logic directly for now
+}
+
+void menuSelect() {
+  // This is the action of pressing the encoder button
+  menuNext(); // For now, just cycle through the menu
+}

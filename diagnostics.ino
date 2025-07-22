@@ -7,10 +7,12 @@ const int CURRENT_PIN = A7;
 // Diagnostic variables
 float voltage = 0.0;
 float current = 0.0;
+float generatorFeedbackVoltage = 0.0;
 
 void setupDiagnostics() {
   pinMode(VOLTAGE_PIN, INPUT);
   pinMode(CURRENT_PIN, INPUT);
+  // The generator feedback pin is already set as INPUT in generator.ino
 }
 
 void loopDiagnostics() {
@@ -21,7 +23,14 @@ void loopDiagnostics() {
   if (currentTime - lastDiagTime > 500) { // Read every 500ms
     lastDiagTime = currentTime;
     readSensors();
+    readGeneratorFeedback();
   }
+}
+
+void readGeneratorFeedback() {
+  int feedbackRaw = analogRead(ANALOG_FEEDBACK_PIN);
+  // The conversion will depend on the expected voltage range and divider circuit.
+  generatorFeedbackVoltage = feedbackRaw * (5.0 / 1023.0);
 }
 
 void readSensors() {

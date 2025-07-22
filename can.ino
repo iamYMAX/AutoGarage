@@ -33,15 +33,23 @@ void loopCan() {
 
 void sendRpmCanMessage() {
   // Encode RPM into two bytes (as an example)
-  // High byte
-  canMsg.data[0] = (rpm >> 8) & 0xFF;
-  // Low byte
-  canMsg.data[1] = rpm & 0xFF;
-
-  // Fill the rest of the message with placeholder data
+  byte rpmData[8];
+  rpmData[0] = (rpm >> 8) & 0xFF; // High byte
+  rpmData[1] = rpm & 0xFF;       // Low byte
   for (int i = 2; i < 8; i++) {
-    canMsg.data[i] = 0x00;
+    rpmData[i] = 0x00;
   }
 
-  mcp2515.sendMessage(&canMsg);
+  sendCanMessage(0x123, 8, rpmData);
+}
+
+void sendCanMessage(unsigned long id, byte dlc, byte *data) {
+  struct can_frame newCanMsg;
+  newCanMsg.can_id  = id;
+  newCanMsg.can_dlc = dlc;
+  for (int i = 0; i < dlc; i++) {
+    newCanMsg.data[i] = data[i];
+  }
+
+  mcp2515.sendMessage(&newCanMsg);
 }

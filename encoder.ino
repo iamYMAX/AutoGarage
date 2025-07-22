@@ -18,22 +18,27 @@ void loopEncoder() {
   enc.tick(); // Must be called in the main loop
 
   // --- Encoder Rotation ---
-  if (enc.isRight()) {
-    // Increase RPM
-    rpm += 100;
-    if (rpm > 8000) rpm = 8000;
-    setRpm(rpm); // Update the crank module
-  }
-  if (enc.isLeft()) {
-    // Decrease RPM
-    rpm -= 100;
-    if (rpm < 0) rpm = 0;
-    setRpm(rpm); // Update the crank module
+  if (enc.isRight() || enc.isLeft()) {
+    bool isRight = enc.isRight();
+
+    switch (currentMenu) {
+      case MENU_RPM:
+        rpm += isRight ? 100 : -100;
+        if (rpm > 8000) rpm = 8000;
+        if (rpm < 0) rpm = 0;
+        setRpm(rpm);
+        break;
+      case MENU_GEN_MODE:
+        int genTypeInt = (int)currentGeneratorType + (isRight ? 1 : -1);
+        if (genTypeInt >= GEN_TYPE_CAN + 1) genTypeInt = 0;
+        if (genTypeInt < 0) genTypeInt = GEN_TYPE_CAN;
+        setGeneratorType((GeneratorType)genTypeInt);
+        break;
+    }
   }
 
   // --- Encoder Button Click ---
   if (enc.isClick()) {
-    // Placeholder for menu selection action
-    // menuSelect();
+    menuSelect(); // Go to the next menu item
   }
 }
