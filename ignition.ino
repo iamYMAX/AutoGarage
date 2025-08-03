@@ -1,6 +1,6 @@
 // Module for controlling the ignition coil.
 
-#define IGNITION_PIN 23 // A suitable GPIO pin on ESP32
+#define IGNITION_PIN 13 // Changed from 23 to avoid conflict with SPI MOSI
 
 // Ignition parameters
 unsigned int dwellTime_us = 3000; // Dwell time in microseconds (3ms)

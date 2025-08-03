@@ -5,7 +5,7 @@
 // Pin definitions for the encoder on ESP32
 #define CLK_PIN 16
 #define DT_PIN  17
-#define SW_PIN  21
+#define SW_PIN  4 // Changed from 21 to avoid conflict with I2C SDA
 
 // Create an encoder object
 Encoder enc(CLK_PIN, DT_PIN, SW_PIN);
