@@ -1,0 +1,44 @@
+name: Validate Task Contract
+
+on:
+  push:
+    paths:
+      - '.github/tasks/**'
+  pull_request:
+    paths:
+      - '.github/tasks/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate Task Schema
+        run: |
+          python -c "
+          import glob, yaml, sys
+          tasks = glob.glob('.github/tasks/*.yml')
+          if not tasks:
+              print('No tasks found.')
+              sys.exit(0)
+          for t in tasks:
+              with open(t) as f:
+                  data = yaml.safe_load(f)
+              task = data.get('task', {})
+              required = ['id', 'title', 'objective', 'requirements', 'acceptance']
+              for req in required:
+                  if req not in task or not task[req]:
+                      print(f'Error in {t}: missing task.{req}')
+                      sys.exit(1)
+          print('Task Contract Schema Validation Passed.')
+          "
