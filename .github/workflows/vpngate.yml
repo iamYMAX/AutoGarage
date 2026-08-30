@@ -1,4 +1,4 @@
-```yaml
+
 name: VPNGate - Find Working US OpenVPN
 
 on:
@@ -475,4 +475,4 @@ jobs:
           echo "vpngate-us-working"
           echo
           ls -lh vpngate_us_working.zip
-```
+
