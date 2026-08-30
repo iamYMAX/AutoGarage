@@ -1,48 +1,4 @@
 
-name: VPNGate - Find Working US OpenVPN
-
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
-
-jobs:
-  test-vpngate:
-    name: Find working VPNGate US servers
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Install OpenVPN and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            curl \
-            openvpn \
-            python3 \
-            iproute2 \
-            net-tools
-
-      - name: Download VPNGate API
-        run: |
-          set -e
-
-          curl -L \
-            --fail \
-            --retry 3 \
-            --connect-timeout 15 \
-            --max-time 60 \
-            "https://www.vpngate.net/api/iphone/" \
-            -o vpngate.csv
-
-          echo "Downloaded VPNGate API:"
-          wc -c vpngate.csv
-
-          if [ ! -s vpngate.csv ]; then
-            echo "VPNGate API returned empty response"
-            exit 1
-          fi
-
       - name: Select US servers
         run: |
           mkdir -p candidates
@@ -55,64 +11,118 @@ jobs:
 
           src = Path("vpngate.csv")
 
-          lines = src.read_text(
+          text = src.read_text(
               encoding="utf-8",
               errors="replace"
-          ).splitlines()
+          )
 
-          lines = [
-              x for x in lines
-              if x.strip() and not x.startswith("*")
-          ]
+          lines = text.splitlines()
 
-          if not lines:
-              raise SystemExit(
-                  "VPNGate API contains no usable CSV data"
-              )
+          # VPNGate API содержит служебные строки.
+          # Ищем реальный CSV-заголовок по наличию HostName.
+          header_index = None
 
-          reader = csv.DictReader(lines)
+          for i, line in enumerate(lines):
+              clean = line.lstrip("#").strip()
+
+              if "HostName" in clean and "OpenVPN_ConfigData_Base64" in clean:
+                  header_index = i
+                  break
+
+          if header_index is None:
+              print("Could not find VPNGate CSV header.")
+              print("First 20 lines:")
+              for line in lines[:20]:
+                  print(repr(line))
+
+              raise SystemExit(1)
+
+          # Убираем # перед заголовком.
+          csv_lines = lines[header_index:]
+          csv_lines[0] = csv_lines[0].lstrip("#").strip()
+
+          reader = csv.DictReader(csv_lines)
+
           rows = list(reader)
 
+          print("Detected CSV fields:")
+          print(reader.fieldnames)
+
           required = [
-              "CountryShort",
               "HostName",
               "IP",
-              "Ping",
               "Score",
+              "Ping",
               "OpenVPN_ConfigData_Base64"
           ]
 
           missing = [
-              x for x in required
-              if x not in reader.fieldnames
+              field
+              for field in required
+              if field not in reader.fieldnames
           ]
 
           if missing:
-              raise SystemExit(
-                  f"Missing fields: {missing}"
-              )
+              print()
+              print("Missing fields:", missing)
+              print()
+              print("Detected fields:")
+              for field in reader.fieldnames:
+                  print(repr(field))
+
+              raise SystemExit(1)
 
           def number(value, default=999999):
               try:
-                  return float(
-                      re.sub(
-                          r"[^\d.]",
-                          "",
-                          str(value or "")
-                      )
-                  )
+                  value = str(value or "")
+                  value = re.sub(r"[^\d.]", "", value)
+
+                  if not value:
+                      return default
+
+                  return float(value)
+
               except Exception:
                   return default
 
-          # Берём только США с OpenVPN-конфигурацией.
-          servers = [
-              row for row in rows
-              if row.get("CountryShort", "").upper() == "US"
-              and row.get("OpenVPN_ConfigData_Base64")
-          ]
+          # Только US-серверы с OpenVPN-конфигурацией.
+          servers = []
 
-          # Чем выше Score — тем лучше.
-          # При одинаковом Score предпочитаем меньший Ping.
+          for row in rows:
+
+              country = (
+                  row.get("CountryShort", "")
+                  .strip()
+                  .upper()
+              )
+
+              config = (
+                  row.get("OpenVPN_ConfigData_Base64", "")
+                  .strip()
+              )
+
+              if country != "US":
+                  continue
+
+              if not config:
+                  continue
+
+              servers.append(row)
+
+          print()
+          print(
+              f"US servers with OpenVPN configs: "
+              f"{len(servers)}"
+          )
+
+          if not servers:
+              raise SystemExit(
+                  "No US servers with OpenVPN configs found."
+              )
+
+          # Сортировка:
+          # 1. высокий Score
+          # 2. низкий Ping
           servers.sort(
               key=lambda row: (
                   -int(row.get("Score") or 0),
@@ -120,68 +130,90 @@ jobs:
               )
           )
 
-          # Берём 15 кандидатов.
-          servers = servers[:15]
+          # Берём до 15 кандидатов для реального OpenVPN-теста.
+          candidates = servers[:15]
 
-          if not servers:
-              raise SystemExit(
-                  "No US VPNGate servers found"
-              )
+          print()
+          print("Selected candidates:")
+          print()
 
-          for index, row in enumerate(servers, start=1):
+          for index, row in enumerate(
+              candidates,
+              start=1
+          ):
 
               hostname = row.get(
                   "HostName",
                   f"server-{index}"
-              )
+              ).strip()
 
-              safe = re.sub(
+              safe_hostname = re.sub(
                   r"[^A-Za-z0-9_.-]+",
                   "_",
                   hostname
               )
 
               filename = (
-                  f"candidate_{index:02d}_{safe}.ovpn"
+                  f"candidate_{index:02d}_"
+                  f"{safe_hostname}.ovpn"
               )
 
-              encoded = row[
-                  "OpenVPN_ConfigData_Base64"
-              ]
+              encoded = (
+                  row[
+                      "OpenVPN_ConfigData_Base64"
+                  ].strip()
+              )
 
               try:
+
                   config = base64.b64decode(
                       encoded
                   ).decode(
                       "utf-8",
                       errors="replace"
                   )
+
               except Exception as e:
+
                   print(
-                      f"Cannot decode {hostname}: {e}"
+                      f"Failed to decode "
+                      f"{hostname}: {e}"
                   )
+
                   continue
 
-              Path(
+              path = Path(
                   "candidates",
                   filename
-              ).write_text(
+              )
+
+              path.write_text(
                   config,
                   encoding="utf-8"
               )
 
               print(
-                  f"{index}: "
+                  f"{index:02d}. "
                   f"{hostname} | "
                   f"{row.get('IP')} | "
                   f"Ping={row.get('Ping')} | "
                   f"Score={row.get('Score')}"
               )
+
+          print()
+          print("Generated candidate configs:")
+
+          for path in sorted(
+              Path("candidates").glob("*.ovpn")
+          ):
+              print(path)
           PY
 
           echo
           echo "Candidate configs:"
           ls -lh candidates/
+
+
 
       - name: Test OpenVPN configurations
         id: test
