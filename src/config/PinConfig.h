@@ -44,6 +44,6 @@
 // Encoder
 #define PIN_ENCODER_CLK     12
 #define PIN_ENCODER_DT      0
-#define PIN_ENCODER_BTN     12
+#define PIN_ENCODER_BTN     15
 
 #endif // PIN_CONFIG_H

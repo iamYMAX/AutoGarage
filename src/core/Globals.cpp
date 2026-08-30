@@ -78,7 +78,7 @@ SystemState gSystemState = {
 
 static uint32_t sensorSequenceCounter = 0;
 
-void incrementQueueOverflowCount() {
+void IRAM_ATTR incrementQueueOverflowCount() {
     gSystemState.queueOverflowCount++;
 }
 
@@ -116,7 +116,6 @@ SensorQuality validateSensorReading(SensorId sensor, float value, SensorSourceTy
             return (value >= 0.0f && value <= 350.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
         case SENSOR_ECT:
         case SENSOR_IAT:
-            // Allow negative temperatures down to -40°C
             return (value >= -40.0f && value <= 160.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
         case SENSOR_BATTERY:
             return (value >= 0.0f && value <= 30.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
@@ -144,17 +143,20 @@ void updateEngineStateFromSources() {
     gSystemState.engine.timestampUs = now;
 
     // Process all 11 sensor channels via Data Engine
-    SensorValue svRpm     = processSensorChannel(SENSOR_CKP, (float)gSystemState.currentRpm, SOURCE_SIMULATION);
+    SensorValue svCkp     = processSensorChannel(SENSOR_CKP, (float)gSystemState.currentRpm, SOURCE_SIMULATION);
+    SensorValue svCmp     = processSensorChannel(SENSOR_CMP, gSystemState.cmpPhaseDegrees, SOURCE_SIMULATION);
     SensorValue svBat     = processSensorChannel(SENSOR_BATTERY, gSystemState.batteryVoltage, SOURCE_REAL);
     SensorValue svTps     = processSensorChannel(SENSOR_TPS, gSystemState.engine.throttle, SOURCE_SIMULATION);
     SensorValue svMap     = processSensorChannel(SENSOR_MAP, gSystemState.engine.map, SOURCE_SIMULATION);
     SensorValue svEct     = processSensorChannel(SENSOR_ECT, gSystemState.engine.coolantTemp, SOURCE_SIMULATION);
     SensorValue svIat     = processSensorChannel(SENSOR_IAT, gSystemState.engine.intakeTemp, SOURCE_SIMULATION);
     SensorValue svLambda  = processSensorChannel(SENSOR_LAMBDA, gSystemState.engine.lambda, SOURCE_SIMULATION);
+    SensorValue svCan     = processSensorChannel(SENSOR_CAN, (float)gSystemState.canFramesCount, SOURCE_SIMULATION);
     SensorValue svInj     = processSensorChannel(SENSOR_INJ, (float)gSystemState.injectorPulseWidthUs, SOURCE_SIMULATION);
     SensorValue svIgnDwell= processSensorChannel(SENSOR_IGN, (float)gSystemState.ignitionDwellUs, SOURCE_SIMULATION);
 
-    gSystemState.engine.rpm = svRpm.value;
+    gSystemState.engine.rpm = svCkp.value;
+    gSystemState.engine.camAngle = svCmp.value;
     gSystemState.engine.batteryVoltage = svBat.value;
     gSystemState.engine.throttle = svTps.value;
     gSystemState.engine.map = svMap.value;

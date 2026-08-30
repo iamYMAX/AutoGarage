@@ -1,10 +1,12 @@
-# AutoGarage Infrastructure & Agent Development Loop
-
-## Development Cycle
+# AutoGarage Agent Workflow & Development Cycle
 
 ```text
-1. Architect creates task contract (.github/tasks/*.yml)
-2. Coder implements task requirements
-3. Tester runs build verification (pio run, pio run -t buildfs)
-4. Reviewer evaluates changes and updates review contract (.github/reviews/*.yml)
+1. Architect/ChatGPT creates task contract in .github/tasks/current.yml
+2. Task is saved and committed
+3. Jules reads task contract and implements requirements
+4. Jules creates commit
+5. GitHub Actions executes build and filesystem tests
+6. Reviewer evaluates changes and updates .github/reviews/current.yml
+7. review-gate checks status (passed vs failed/pending)
+8. Upon FAIL, Jules receives feedback list and repeats cycle
 ```

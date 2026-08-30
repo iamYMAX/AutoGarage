@@ -26,19 +26,18 @@ jobs:
       - name: Validate Task Schema
         run: |
           python -c "
-          import glob, yaml, sys
-          tasks = glob.glob('.github/tasks/*.yml')
-          if not tasks:
-              print('No tasks found.')
-              sys.exit(0)
-          for t in tasks:
-              with open(t) as f:
-                  data = yaml.safe_load(f)
-              task = data.get('task', {})
-              required = ['id', 'title', 'objective', 'requirements', 'acceptance']
-              for req in required:
-                  if req not in task or not task[req]:
-                      print(f'Error in {t}: missing task.{req}')
-                      sys.exit(1)
+          import yaml, sys, os
+          task_file = '.github/tasks/current.yml'
+          if not os.path.exists(task_file):
+              print('Task file .github/tasks/current.yml not found.')
+              sys.exit(1)
+          with open(task_file) as f:
+              data = yaml.safe_load(f)
+          task = data.get('task', {})
+          required = ['id', 'title', 'objective', 'requirements', 'acceptance_criteria']
+          for req in required:
+              if req not in task or not task[req]:
+                  print(f'Error in {task_file}: missing task.{req}')
+                  sys.exit(1)
           print('Task Contract Schema Validation Passed.')
           "

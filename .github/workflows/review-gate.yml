@@ -26,18 +26,17 @@ jobs:
       - name: Evaluate Review Status
         run: |
           python -c "
-          import glob, yaml, sys
-          reviews = glob.glob('.github/reviews/*.yml')
-          if not reviews:
-              print('No review contracts found.')
-              sys.exit(0)
-          for r in reviews:
-              with open(r) as f:
-                  data = yaml.safe_load(f)
-              review = data.get('review', {})
-              status = review.get('status', 'pending').lower()
-              if status != 'passed':
-                  print(f'Review gate FAILED for {r}: status is {status}')
-                  sys.exit(1)
+          import yaml, sys, os
+          review_file = '.github/reviews/current.yml'
+          if not os.path.exists(review_file):
+              print('Review file .github/reviews/current.yml not found.')
+              sys.exit(1)
+          with open(review_file) as f:
+              data = yaml.safe_load(f)
+          review = data.get('review', {})
+          status = str(review.get('status', 'pending')).lower()
+          if status != 'passed':
+              print(f'Review gate FAILED for {review_file}: status is {status}')
+              sys.exit(1)
           print('Review Gate Status Passed.')
           "
