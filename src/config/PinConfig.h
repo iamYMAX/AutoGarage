@@ -35,7 +35,7 @@
 // Analog Inputs
 #define PIN_ADC_BATTERY     36
 #define PIN_ADC_CURRENT     39
-#define PIN_ADC_GEN_FB      34
+#define PIN_ADC_GEN_FB      33  // Moved to dedicated ADC1 channel
 
 // I2C
 #define PIN_I2C_SDA         21
