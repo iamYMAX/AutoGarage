@@ -35,15 +35,18 @@ void AdcManager::update(uint32_t intervalMs) {
     float curVal = readVoltage(currentConfig, curRaw);
     float genVal = readVoltage(generatorFbConfig, genRaw);
 
-    gSystemState.batteryVoltage = batVal;
+    // Process ADC reading through Data Engine
+    SensorValue svBat = processSensorChannel(SENSOR_BATTERY, batVal, SOURCE_REAL);
+
+    gSystemState.batteryVoltage = svBat.value;
     gSystemState.currentAmps = curVal;
     gSystemState.generatorFbVoltage = genVal;
 
     EngineEvent ev;
-    ev.timestamp_us = getMonotonicTimestampUs();
+    ev.timestamp_us = svBat.timestampUs;
     ev.event_type = EVENT_ADC_SAMPLE;
-    ev.channel = 1;
+    ev.channel = (uint8_t)SENSOR_BATTERY;
     ev.reserved = (uint16_t)batRaw;
-    ev.value = (int32_t)(batVal * 100.0f);
+    ev.value = (int32_t)(svBat.value * 100.0f);
     globalEventQueue.push(ev);
 }

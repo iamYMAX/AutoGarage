@@ -76,30 +76,44 @@ SystemState gSystemState = {
     false          // wifiConnected
 };
 
-static uint32_t sensorSequence = 0;
+static uint32_t sensorSequenceCounter = 0;
 
 void incrementQueueOverflowCount() {
     gSystemState.queueOverflowCount++;
 }
 
-SensorSourceType getResolvedSource(SensorSourceType specificSource) {
+SensorSourceType getResolvedSensorSource(SensorId sensor) {
     if (gSystemState.globalDataMode == MODE_SIMULATION) return SOURCE_SIMULATION;
-    if (gSystemState.globalDataMode == MODE_LOOPBACK) return SOURCE_LOOPBACK;
-    if (gSystemState.globalDataMode == MODE_REAL) return SOURCE_REAL;
-    return specificSource; // MODE_HYBRID
+    if (gSystemState.globalDataMode == MODE_LOOPBACK)   return SOURCE_LOOPBACK;
+    if (gSystemState.globalDataMode == MODE_REAL)       return SOURCE_REAL;
+
+    // MODE_HYBRID: Route per-sensor channel source
+    switch (sensor) {
+        case SENSOR_CKP:     return gSystemState.sourceCkp;
+        case SENSOR_CMP:     return gSystemState.sourceCmp;
+        case SENSOR_TPS:     return gSystemState.sourceTps;
+        case SENSOR_MAP:     return gSystemState.sourceMap;
+        case SENSOR_ECT:     return gSystemState.sourceEct;
+        case SENSOR_IAT:     return gSystemState.sourceIat;
+        case SENSOR_BATTERY: return gSystemState.sourceBattery;
+        case SENSOR_CAN:     return gSystemState.sourceCan;
+        default:             return SOURCE_SIMULATION;
+    }
 }
 
-SensorValue processSensorReading(uint8_t sensorId, float rawValue, SensorSourceType specificSource) {
+SensorValue processSensorChannel(SensorId sensor, float rawValue, SensorSourceType rawSource) {
     SensorValue sv;
     sv.timestampUs = getMonotonicTimestampUs();
-    sv.sensorId = sensorId;
-    sv.sequence = ++sensorSequence;
-    sv.source = getResolvedSource(specificSource);
+    sv.sensorId = (uint8_t)sensor;
+    sv.sequence = ++sensorSequenceCounter;
+    sv.source = getResolvedSensorSource(sensor);
 
     if (sv.source == SOURCE_SIMULATION) {
         sv.quality = QUALITY_SIMULATED;
-    } else {
+    } else if (sv.source == SOURCE_REAL) {
         sv.quality = (rawValue >= 0.0f) ? QUALITY_VALID : QUALITY_INVALID;
+    } else {
+        sv.quality = QUALITY_VALID;
     }
 
     sv.value = rawValue;
@@ -109,13 +123,31 @@ SensorValue processSensorReading(uint8_t sensorId, float rawValue, SensorSourceT
 void updateEngineStateFromSources() {
     uint64_t now = getMonotonicTimestampUs();
     gSystemState.engine.timestampUs = now;
-    gSystemState.engine.rpm = (float)gSystemState.currentRpm;
-    gSystemState.engine.batteryVoltage = gSystemState.batteryVoltage;
-    gSystemState.engine.injectorPulseWidth = (float)gSystemState.injectorPulseWidthUs;
-    gSystemState.engine.ignitionDwell = (float)gSystemState.ignitionDwellUs;
+
+    // Process all 11 sensor channels via Data Engine
+    SensorValue svRpm     = processSensorChannel(SENSOR_CKP, (float)gSystemState.currentRpm, SOURCE_SIMULATION);
+    SensorValue svBat     = processSensorChannel(SENSOR_BATTERY, gSystemState.batteryVoltage, SOURCE_REAL);
+    SensorValue svTps     = processSensorChannel(SENSOR_TPS, gSystemState.engine.throttle, SOURCE_SIMULATION);
+    SensorValue svMap     = processSensorChannel(SENSOR_MAP, gSystemState.engine.map, SOURCE_SIMULATION);
+    SensorValue svEct     = processSensorChannel(SENSOR_ECT, gSystemState.engine.coolantTemp, SOURCE_SIMULATION);
+    SensorValue svIat     = processSensorChannel(SENSOR_IAT, gSystemState.engine.intakeTemp, SOURCE_SIMULATION);
+    SensorValue svLambda  = processSensorChannel(SENSOR_LAMBDA, gSystemState.engine.lambda, SOURCE_SIMULATION);
+    SensorValue svInj     = processSensorChannel(SENSOR_INJ, (float)gSystemState.injectorPulseWidthUs, SOURCE_SIMULATION);
+    SensorValue svIgnDwell= processSensorChannel(SENSOR_IGN, (float)gSystemState.ignitionDwellUs, SOURCE_SIMULATION);
+
+    gSystemState.engine.rpm = svRpm.value;
+    gSystemState.engine.batteryVoltage = svBat.value;
+    gSystemState.engine.throttle = svTps.value;
+    gSystemState.engine.map = svMap.value;
+    gSystemState.engine.coolantTemp = svEct.value;
+    gSystemState.engine.intakeTemp = svIat.value;
+    gSystemState.engine.lambda = svLambda.value;
+    gSystemState.engine.injectorPulseWidth = svInj.value;
+    gSystemState.engine.ignitionDwell = svIgnDwell.value;
     gSystemState.engine.ignitionAdvance = gSystemState.ignitionAdvanceDeg;
 
     if (gSystemState.crankEnabled && gSystemState.generatedTeethCount > 0) {
         gSystemState.engine.crankSync = true;
+        gSystemState.engine.camSync = gSystemState.cmpEnabled;
     }
 }

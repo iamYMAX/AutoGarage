@@ -28,6 +28,14 @@ bool WebUI::begin() {
                     if (doc.containsKey("dataMode")) {
                         gSystemState.globalDataMode = (DataMode)((int)doc["dataMode"]);
                     }
+                    if (doc.containsKey("sourceCkp")) gSystemState.sourceCkp = (SensorSourceType)((int)doc["sourceCkp"]);
+                    if (doc.containsKey("sourceCmp")) gSystemState.sourceCmp = (SensorSourceType)((int)doc["sourceCmp"]);
+                    if (doc.containsKey("sourceTps")) gSystemState.sourceTps = (SensorSourceType)((int)doc["sourceTps"]);
+                    if (doc.containsKey("sourceMap")) gSystemState.sourceMap = (SensorSourceType)((int)doc["sourceMap"]);
+                    if (doc.containsKey("sourceEct")) gSystemState.sourceEct = (SensorSourceType)((int)doc["sourceEct"]);
+                    if (doc.containsKey("sourceIat")) gSystemState.sourceIat = (SensorSourceType)((int)doc["sourceIat"]);
+                    if (doc.containsKey("sourceBattery")) gSystemState.sourceBattery = (SensorSourceType)((int)doc["sourceBattery"]);
+                    if (doc.containsKey("sourceCan")) gSystemState.sourceCan = (SensorSourceType)((int)doc["sourceCan"]);
                 }
             }
         }
@@ -42,7 +50,7 @@ bool WebUI::begin() {
 
 void WebUI::setupRoutes() {
     server.on("/api/state", HTTP_GET, [](AsyncWebServerRequest *request) {
-        StaticJsonDocument<512> doc;
+        StaticJsonDocument<768> doc;
         doc["dataMode"] = (uint8_t)gSystemState.globalDataMode;
         doc["rpm"] = gSystemState.currentRpm;
         doc["crankPattern"] = (uint8_t)gSystemState.crankPattern;
@@ -51,7 +59,19 @@ void WebUI::setupRoutes() {
         doc["currentAmps"] = gSystemState.currentAmps;
         doc["canFramesCount"] = gSystemState.canFramesCount;
         doc["capturedEventsCount"] = gSystemState.capturedEventsCount;
+        doc["queueOverflowCount"] = gSystemState.queueOverflowCount;
         doc["sdCardReady"] = gSystemState.sdCardReady;
+
+        JsonObject engine = doc.createNestedObject("engine");
+        engine["rpm"] = gSystemState.engine.rpm;
+        engine["throttle"] = gSystemState.engine.throttle;
+        engine["map"] = gSystemState.engine.map;
+        engine["coolantTemp"] = gSystemState.engine.coolantTemp;
+        engine["intakeTemp"] = gSystemState.engine.intakeTemp;
+        engine["batteryVoltage"] = gSystemState.engine.batteryVoltage;
+        engine["lambda"] = gSystemState.engine.lambda;
+        engine["injectorPulseWidth"] = gSystemState.engine.injectorPulseWidth;
+        engine["ignitionDwell"] = gSystemState.engine.ignitionDwell;
 
         JsonObject sources = doc.createNestedObject("sources");
         sources["ckp"] = (uint8_t)gSystemState.sourceCkp;
@@ -83,12 +103,13 @@ void WebUI::update() {
 void WebUI::broadcastState() {
     if (ws.count() == 0) return;
 
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<384> doc;
     doc["dataMode"] = (uint8_t)gSystemState.globalDataMode;
     doc["rpm"] = gSystemState.currentRpm;
     doc["vBat"] = gSystemState.batteryVoltage;
     doc["can"] = gSystemState.canFramesCount;
     doc["events"] = gSystemState.capturedEventsCount;
+    doc["overflows"] = gSystemState.queueOverflowCount;
 
     String msg;
     serializeJson(doc, msg);

@@ -25,6 +25,20 @@ enum SensorQuality : uint8_t {
     QUALITY_SIMULATED    = 5
 };
 
+enum SensorId : uint8_t {
+    SENSOR_CKP     = 1,
+    SENSOR_CMP     = 2,
+    SENSOR_TPS     = 3,
+    SENSOR_MAP     = 4,
+    SENSOR_ECT     = 5,
+    SENSOR_IAT     = 6,
+    SENSOR_BATTERY = 7,
+    SENSOR_LAMBDA  = 8,
+    SENSOR_CAN     = 9,
+    SENSOR_INJ     = 10,
+    SENSOR_IGN     = 11
+};
+
 enum CrankPattern : uint8_t {
     PATTERN_60_2 = 0,
     PATTERN_36_1 = 1,
@@ -120,5 +134,9 @@ struct SystemState {
 };
 
 extern SystemState gSystemState;
+
+SensorSourceType getResolvedSensorSource(SensorId sensor);
+SensorValue processSensorChannel(SensorId sensor, float rawValue, SensorSourceType rawSource);
+void updateEngineStateFromSources();
 
 #endif // SYSTEM_STATE_H
