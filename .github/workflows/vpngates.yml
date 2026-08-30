@@ -1,0 +1,505 @@
+- name: Select US servers
+        run: |
+          mkdir -p candidates
+
+          python3 <<'PY'
+          import csv
+          import base64
+          import re
+          from pathlib import Path
+
+          src = Path("vpngate.csv")
+
+          text = src.read_text(
+              encoding="utf-8",
+              errors="replace"
+          )
+
+          lines = text.splitlines()
+
+          # VPNGate API содержит служебные строки.
+          # Ищем реальный CSV-заголовок по наличию HostName.
+          header_index = None
+
+          for i, line in enumerate(lines):
+              clean = line.lstrip("#").strip()
+
+              if "HostName" in clean and "OpenVPN_ConfigData_Base64" in clean:
+                  header_index = i
+                  break
+
+          if header_index is None:
+              print("Could not find VPNGate CSV header.")
+              print("First 20 lines:")
+              for line in lines[:20]:
+                  print(repr(line))
+
+              raise SystemExit(1)
+
+          # Убираем # перед заголовком.
+          csv_lines = lines[header_index:]
+          csv_lines[0] = csv_lines[0].lstrip("#").strip()
+
+          reader = csv.DictReader(csv_lines)
+
+          rows = list(reader)
+
+          print("Detected CSV fields:")
+          print(reader.fieldnames)
+
+          required = [
+              "HostName",
+              "IP",
+              "Score",
+              "Ping",
+              "OpenVPN_ConfigData_Base64"
+          ]
+
+          missing = [
+              field
+              for field in required
+              if field not in reader.fieldnames
+          ]
+
+          if missing:
+              print()
+              print("Missing fields:", missing)
+              print()
+              print("Detected fields:")
+              for field in reader.fieldnames:
+                  print(repr(field))
+
+              raise SystemExit(1)
+
+          def number(value, default=999999):
+              try:
+                  value = str(value or "")
+                  value = re.sub(r"[^\d.]", "", value)
+
+                  if not value:
+                      return default
+
+                  return float(value)
+
+              except Exception:
+                  return default
+
+          # Только US-серверы с OpenVPN-конфигурацией.
+          servers = []
+
+          for row in rows:
+
+              country = (
+                  row.get("CountryShort", "")
+                  .strip()
+                  .upper()
+              )
+
+              config = (
+                  row.get("OpenVPN_ConfigData_Base64", "")
+                  .strip()
+              )
+
+              if country != "US":
+                  continue
+
+              if not config:
+                  continue
+
+              servers.append(row)
+
+          print()
+          print(
+              f"US servers with OpenVPN configs: "
+              f"{len(servers)}"
+          )
+
+          if not servers:
+              raise SystemExit(
+                  "No US servers with OpenVPN configs found."
+              )
+
+          # Сортировка:
+          # 1. высокий Score
+          # 2. низкий Ping
+          servers.sort(
+              key=lambda row: (
+                  -int(row.get("Score") or 0),
+                  number(row.get("Ping"))
+              )
+          )
+
+          # Берём до 15 кандидатов для реального OpenVPN-теста.
+          candidates = servers[:15]
+
+          print()
+          print("Selected candidates:")
+          print()
+
+          for index, row in enumerate(
+              candidates,
+              start=1
+          ):
+
+              hostname = row.get(
+                  "HostName",
+                  f"server-{index}"
+              ).strip()
+
+              safe_hostname = re.sub(
+                  r"[^A-Za-z0-9_.-]+",
+                  "_",
+                  hostname
+              )
+
+              filename = (
+                  f"candidate_{index:02d}_"
+                  f"{safe_hostname}.ovpn"
+              )
+
+              encoded = (
+                  row[
+                      "OpenVPN_ConfigData_Base64"
+                  ].strip()
+              )
+
+              try:
+
+                  config = base64.b64decode(
+                      encoded
+                  ).decode(
+                      "utf-8",
+                      errors="replace"
+                  )
+
+              except Exception as e:
+
+                  print(
+                      f"Failed to decode "
+                      f"{hostname}: {e}"
+                  )
+
+                  continue
+
+              path = Path(
+                  "candidates",
+                  filename
+              )
+
+              path.write_text(
+                  config,
+                  encoding="utf-8"
+              )
+
+              print(
+                  f"{index:02d}. "
+                  f"{hostname} | "
+                  f"{row.get('IP')} | "
+                  f"Ping={row.get('Ping')} | "
+                  f"Score={row.get('Score')}"
+              )
+
+          print()
+          print("Generated candidate configs:")
+
+          for path in sorted(
+              Path("candidates").glob("*.ovpn")
+          ):
+              print(path)
+          PY
+
+          echo
+          echo "Candidate configs:"
+          ls -lh candidates/
+- name: Test OpenVPN configurations
+        id: test
+        run: |
+          set +e
+
+          mkdir -p working
+          mkdir -p working/logs
+
+          echo "Working VPN servers:" > working/working_servers.csv
+          echo "config,host,ip,ping,score,external_ip" \
+            >> working/working_servers.csv
+
+          SUCCESS=0
+          MAX_SUCCESS=5
+
+          for CONFIG in candidates/*.ovpn; do
+
+            if [ ! -f "$CONFIG" ]; then
+              continue
+            fi
+
+            BASENAME=$(basename "$CONFIG")
+
+            echo
+            echo "=========================================="
+            echo "Testing: $BASENAME"
+            echo "=========================================="
+
+            LOG="working/logs/${BASENAME}.log"
+
+            # VPNGate обычно использует vpn/vpn.
+            cat > working/auth.txt <<EOF
+          vpn
+          vpn
+          EOF
+
+            chmod 600 working/auth.txt
+
+            sudo timeout 75 \
+              openvpn \
+              --config "$CONFIG" \
+              --auth-user-pass working/auth.txt \
+              --daemon \
+              --writepid "/tmp/vpngate-${SUCCESS}.pid" \
+              --log "$LOG"
+
+            PIDFILE="/tmp/vpngate-${SUCCESS}.pid"
+
+            CONNECTED=0
+
+            for i in $(seq 1 60); do
+
+              if grep -q \
+                "Initialization Sequence Completed" \
+                "$LOG" 2>/dev/null; then
+
+                CONNECTED=1
+                break
+              fi
+
+              if grep -qi \
+                "AUTH_FAILED" \
+                "$LOG" 2>/dev/null; then
+
+                break
+              fi
+
+              sleep 1
+            done
+
+            if [ "$CONNECTED" -eq 1 ]; then
+
+              echo "OPENVPN CONNECTION: SUCCESS"
+
+              EXTERNAL_IP=$(
+                curl \
+                  --interface tun0 \
+                  --max-time 10 \
+                  -4 \
+                  https://api.ipify.org \
+                  2>/dev/null
+              )
+
+              if [ -n "$EXTERNAL_IP" ]; then
+
+                echo "External IP: $EXTERNAL_IP"
+
+                # Получаем имя/IP/метаданные из файла.
+                python3 - "$CONFIG" "$EXTERNAL_IP" <<'PY'
+          import sys
+          import re
+
+          config = sys.argv[1]
+          external_ip = sys.argv[2]
+
+          # Метаданные будут дополнены ниже.
+          print(
+              f"{config}|{external_ip}"
+          )
+          PY
+
+                SUCCESS=$((SUCCESS + 1))
+
+                cp "$CONFIG" \
+                  "working/US_WORKING_${SUCCESS}.ovpn"
+
+                echo "Working config saved."
+
+              else
+
+                echo "VPN connected, but external IP check failed."
+
+              fi
+
+            else
+
+              echo "OPENVPN CONNECTION: FAILED"
+
+            fi
+
+            # Остановить OpenVPN.
+            sudo pkill openvpn 2>/dev/null
+
+            sleep 2
+
+            if [ "$SUCCESS" -ge "$MAX_SUCCESS" ]; then
+              echo
+              echo "Found $MAX_SUCCESS working servers."
+              break
+            fi
+
+          done
+
+          echo
+          echo "=========================================="
+          echo "RESULT"
+          echo "=========================================="
+
+          echo "Working servers found: $SUCCESS"
+
+          if [ "$SUCCESS" -eq 0 ]; then
+            echo
+            echo "No working VPNGate US servers found."
+            echo
+            echo "Logs:"
+            find working/logs -type f -maxdepth 1 -print
+            exit 1
+          fi
+
+      - name: Verify working configs
+        run: |
+          echo "Working OpenVPN configs:"
+          ls -lh working/*.ovpn
+
+          echo
+          echo "Testing that configs contain OpenVPN directives:"
+
+          for CONFIG in working/*.ovpn; do
+            echo
+            echo "===== $CONFIG ====="
+
+            grep -E \
+              "^(client|remote|proto|dev|auth|cipher|data-ciphers)" \
+              "$CONFIG" \
+              | head -20 || true
+          done
+
+      - name: Create CSV and ZIP
+        run: |
+          python3 <<'PY'
+          import csv
+          import re
+          import zipfile
+          from pathlib import Path
+
+          output = Path("working")
+
+          configs = sorted(
+              output.glob("US_WORKING_*.ovpn")
+          )
+
+          if not configs:
+              raise SystemExit(
+                  "No working configs found"
+              )
+
+          csv_path = output / "vpngate_us_working.csv"
+
+          with csv_path.open(
+              "w",
+              newline="",
+              encoding="utf-8-sig"
+          ) as f:
+
+              writer = csv.writer(f)
+
+              writer.writerow([
+                  "config",
+                  "vpn",
+                  "username",
+                  "password"
+              ])
+
+              for config in configs:
+
+                  writer.writerow([
+                      config.name,
+                      "VPNGate",
+                      "vpn",
+                      "vpn"
+                  ])
+
+          readme = output / "README.txt"
+
+          readme.write_text(
+              """VPNGate working OpenVPN configurations
+
+          These configurations were obtained from VPNGate
+          and successfully established an OpenVPN tunnel
+          during the GitHub Actions test.
+
+          VPNGate credentials:
+
+          Username: vpn
+          Password: vpn
+
+          Kali Linux:
+
+          sudo apt install openvpn
+
+          sudo openvpn --config US_WORKING_1.ovpn
+
+          Check external IP:
+
+          curl -4 https://api.ipify.org
+          """,
+              encoding="utf-8"
+          )
+
+          zip_path = Path(
+              "vpngate_us_working.zip"
+          )
+
+          with zipfile.ZipFile(
+              zip_path,
+              "w",
+              compression=zipfile.ZIP_DEFLATED
+          ) as z:
+
+              z.write(
+                  csv_path,
+                  csv_path.name
+              )
+
+              z.write(
+                  readme,
+                  readme.name
+              )
+
+              for config in configs:
+                  z.write(
+                      config,
+                      config.name
+                  )
+
+          print(
+              f"Created {zip_path}"
+          )
+
+      - name: Upload working VPN configs
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpngate-us-working
+          path: |
+            vpngate_us_working.zip
+            working/vpngate_us_working.csv
+            working/README.txt
+            working/US_WORKING_*.ovpn
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Final result
+        run: |
+          echo
+          echo "=========================================="
+          echo "VPNGate test completed"
+          echo "=========================================="
+          echo
+          echo "Download artifact:"
+          echo "vpngate-us-working"
+          echo
+          ls -lh vpngate_us_working.zip
