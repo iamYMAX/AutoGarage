@@ -1,17 +1,17 @@
 review:
   task_id: AG-V2-DATA-004
 
-  commit_sha: "HEAD"
+  commit_sha: ""
 
-  status: passed
+  status: pending
 
   findings: []
 
   checks:
-    build: passed
-    buildfs: passed
-    tests: passed
-    architecture: passed
+    build: pending
+    buildfs: pending
+    tests: pending
+    architecture: pending
 
   decision:
-    action: approved
+    action: pending
