@@ -101,22 +101,41 @@ SensorSourceType getResolvedSensorSource(SensorId sensor) {
     }
 }
 
+SensorQuality validateSensorReading(SensorId sensor, float value, SensorSourceType source) {
+    if (source == SOURCE_SIMULATION) {
+        return QUALITY_SIMULATED;
+    }
+
+    switch (sensor) {
+        case SENSOR_CKP:
+        case SENSOR_CMP:
+            return (value >= 0.0f && value <= 10000.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
+        case SENSOR_TPS:
+            return (value >= 0.0f && value <= 100.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
+        case SENSOR_MAP:
+            return (value >= 0.0f && value <= 350.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
+        case SENSOR_ECT:
+        case SENSOR_IAT:
+            // Allow negative temperatures down to -40°C
+            return (value >= -40.0f && value <= 160.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
+        case SENSOR_BATTERY:
+            return (value >= 0.0f && value <= 30.0f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
+        case SENSOR_LAMBDA:
+            return (value >= 0.5f && value <= 2.5f) ? QUALITY_VALID : QUALITY_OUT_OF_RANGE;
+        default:
+            return QUALITY_VALID;
+    }
+}
+
 SensorValue processSensorChannel(SensorId sensor, float rawValue, SensorSourceType rawSource) {
     SensorValue sv;
     sv.timestampUs = getMonotonicTimestampUs();
     sv.sensorId = (uint8_t)sensor;
     sv.sequence = ++sensorSequenceCounter;
     sv.source = getResolvedSensorSource(sensor);
-
-    if (sv.source == SOURCE_SIMULATION) {
-        sv.quality = QUALITY_SIMULATED;
-    } else if (sv.source == SOURCE_REAL) {
-        sv.quality = (rawValue >= 0.0f) ? QUALITY_VALID : QUALITY_INVALID;
-    } else {
-        sv.quality = QUALITY_VALID;
-    }
-
+    sv.quality = validateSensorReading(sensor, rawValue, sv.source);
     sv.value = rawValue;
+
     return sv;
 }
 

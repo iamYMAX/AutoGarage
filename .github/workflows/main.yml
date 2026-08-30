@@ -2,9 +2,9 @@ name: AutoGarage v2 CI
 
 on:
   push:
-    branches: [ "feature/autogarage-v2-data-engine-13158850612268727049", "feature/autogarage-v2-data-engine*", "main", "master" ]
+    branches: [ "feature/autogarage-v2-data-engine*", "main", "master" ]
   pull_request:
-    branches: [ "feature/autogarage-v2-data-engine-13158850612268727049", "feature/autogarage-v2-data-engine*", "main", "master" ]
+    branches: [ "feature/autogarage-v2-data-engine*", "main", "master" ]
 
 jobs:
   build:
