@@ -32,7 +32,7 @@ jobs:
             --retry 3 \
             --connect-timeout 15 \
             --max-time 60 \
-            "https://www.vpngate.net/api/iphone.aspx" \
+            "https://www.vpngate.net/api/iphone/" \
             -o vpngate.csv
 
           echo "Downloaded VPNGate API:"
