@@ -18,27 +18,54 @@ public:
     EventQueue() : head(0), tail(0) {}
 
     bool push(const EngineEvent& event) {
-        portENTER_CRITICAL_ISR(&spinlock);
-        uint32_t nextHead = (head + 1) % EVENT_QUEUE_SIZE;
-        if (nextHead == tail) {
+        if (xPortInIsrContext()) {
+            portENTER_CRITICAL_ISR(&spinlock);
+            uint32_t nextHead = (head + 1) % EVENT_QUEUE_SIZE;
+            if (nextHead == tail) {
+                extern void incrementQueueOverflowCount();
+                incrementQueueOverflowCount();
+                portEXIT_CRITICAL_ISR(&spinlock);
+                return false;
+            }
+            buffer[head] = event;
+            head = nextHead;
             portEXIT_CRITICAL_ISR(&spinlock);
-            return false;
+        } else {
+            portENTER_CRITICAL(&spinlock);
+            uint32_t nextHead = (head + 1) % EVENT_QUEUE_SIZE;
+            if (nextHead == tail) {
+                extern void incrementQueueOverflowCount();
+                incrementQueueOverflowCount();
+                portEXIT_CRITICAL(&spinlock);
+                return false;
+            }
+            buffer[head] = event;
+            head = nextHead;
+            portEXIT_CRITICAL(&spinlock);
         }
-        buffer[head] = event;
-        head = nextHead;
-        portEXIT_CRITICAL_ISR(&spinlock);
         return true;
     }
 
     bool pop(EngineEvent& event) {
-        portENTER_CRITICAL(&spinlock);
-        if (head == tail) {
+        if (xPortInIsrContext()) {
+            portENTER_CRITICAL_ISR(&spinlock);
+            if (head == tail) {
+                portEXIT_CRITICAL_ISR(&spinlock);
+                return false;
+            }
+            event = buffer[tail];
+            tail = (tail + 1) % EVENT_QUEUE_SIZE;
+            portEXIT_CRITICAL_ISR(&spinlock);
+        } else {
+            portENTER_CRITICAL(&spinlock);
+            if (head == tail) {
+                portEXIT_CRITICAL(&spinlock);
+                return false;
+            }
+            event = buffer[tail];
+            tail = (tail + 1) % EVENT_QUEUE_SIZE;
             portEXIT_CRITICAL(&spinlock);
-            return false;
         }
-        event = buffer[tail];
-        tail = (tail + 1) % EVENT_QUEUE_SIZE;
-        portEXIT_CRITICAL(&spinlock);
         return true;
     }
 

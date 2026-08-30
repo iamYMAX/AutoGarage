@@ -8,14 +8,28 @@ SignalCapture::~SignalCapture() {
     stop();
 }
 
+void IRAM_ATTR SignalCapture::onCkpChangeIsr() {
+    if (digitalRead(PIN_CKP_IN)) {
+        onCkpRisingIsr();
+    } else {
+        onCkpFallingIsr();
+    }
+}
+
+void IRAM_ATTR SignalCapture::onCmpChangeIsr() {
+    if (digitalRead(PIN_CMP_IN)) {
+        onCmpRisingIsr();
+    } else {
+        onCmpFallingIsr();
+    }
+}
+
 bool SignalCapture::begin() {
     pinMode(PIN_CKP_IN, INPUT);
     pinMode(PIN_CMP_IN, INPUT);
 
-    attachInterrupt(digitalPinToInterrupt(PIN_CKP_IN), &SignalCapture::onCkpRisingIsr, RISING);
-    attachInterrupt(digitalPinToInterrupt(PIN_CKP_IN), &SignalCapture::onCkpFallingIsr, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PIN_CMP_IN), &SignalCapture::onCmpRisingIsr, RISING);
-    attachInterrupt(digitalPinToInterrupt(PIN_CMP_IN), &SignalCapture::onCmpFallingIsr, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_CKP_IN), &SignalCapture::onCkpChangeIsr, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_CMP_IN), &SignalCapture::onCmpChangeIsr, CHANGE);
 
     enabled = true;
     return true;

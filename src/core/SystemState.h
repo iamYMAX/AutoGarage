@@ -61,6 +61,20 @@ struct EngineState {
     uint32_t cycle;
 };
 
+struct FaultGroundTruth {
+    char faultId[32];
+    float severity;
+    uint64_t startTimeUs;
+    uint64_t endTimeUs;
+    bool active;
+};
+
+struct DiagnosticSession {
+    char sessionId[36];
+    uint64_t startTimeUs;
+    uint8_t dataMode;
+};
+
 struct SystemState {
     DataMode globalDataMode;
 
@@ -75,6 +89,8 @@ struct SystemState {
     SensorSourceType sourceCan;
 
     EngineState engine;
+    FaultGroundTruth activeFault;
+    DiagnosticSession session;
 
     uint32_t targetRpm;
     uint32_t currentRpm;
@@ -98,6 +114,7 @@ struct SystemState {
     uint32_t generatedTeethCount;
     uint32_t capturedEventsCount;
     uint32_t canFramesCount;
+    uint32_t queueOverflowCount;
     bool sdCardReady;
     bool wifiConnected;
 };

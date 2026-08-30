@@ -12,6 +12,8 @@ class SignalCapture {
 private:
     bool enabled;
 
+    static void IRAM_ATTR onCkpChangeIsr();
+    static void IRAM_ATTR onCmpChangeIsr();
     static void IRAM_ATTR onCkpRisingIsr();
     static void IRAM_ATTR onCkpFallingIsr();
     static void IRAM_ATTR onCmpRisingIsr();

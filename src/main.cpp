@@ -16,10 +16,12 @@
 #include "ui/WebUI.h"
 #include "selftest/SelfTest.h"
 
+extern void updateEngineStateFromSources();
+
 void setup() {
     Serial.begin(115200);
     delay(500);
-    Serial.println("\n=== AutoGarage v2 Starting ===");
+    Serial.println("\n=== AutoGarage v2 Data Engine Node Starting ===");
 
     ProfileManager::begin();
     if (!ProfileManager::loadProfile(0)) {
@@ -38,11 +40,13 @@ void setup() {
 
     gCrankGenerator.start();
 
-    Serial.println("=== AutoGarage v2 Node Initialized ===");
+    Serial.println("=== AutoGarage v2 Data Engine Initialized ===");
     SelfTest::runSelfTest(Serial);
 }
 
 void loop() {
+    updateEngineStateFromSources();
+
     gInjector.update();
     gIgnition.update();
     gCanInterface.poll();
