@@ -21,6 +21,15 @@ bool ProfileManager::begin() {
 bool ProfileManager::saveProfile(uint8_t slot) {
     VersionedProfile prof;
     prof.configVersion = PROFILE_CONFIG_VERSION;
+    prof.globalDataMode = (uint8_t)gSystemState.globalDataMode;
+    prof.sourceCkp = (uint8_t)gSystemState.sourceCkp;
+    prof.sourceCmp = (uint8_t)gSystemState.sourceCmp;
+    prof.sourceTps = (uint8_t)gSystemState.sourceTps;
+    prof.sourceMap = (uint8_t)gSystemState.sourceMap;
+    prof.sourceEct = (uint8_t)gSystemState.sourceEct;
+    prof.sourceIat = (uint8_t)gSystemState.sourceIat;
+    prof.sourceBattery = (uint8_t)gSystemState.sourceBattery;
+    prof.sourceCan = (uint8_t)gSystemState.sourceCan;
     prof.targetRpm = gSystemState.targetRpm;
     prof.crankPattern = (uint8_t)gSystemState.crankPattern;
     prof.cmpEnabled = gSystemState.cmpEnabled;
@@ -48,6 +57,15 @@ bool ProfileManager::loadProfile(uint8_t slot) {
         return false;
     }
 
+    gSystemState.globalDataMode = (DataMode)prof.globalDataMode;
+    gSystemState.sourceCkp = (SensorSourceType)prof.sourceCkp;
+    gSystemState.sourceCmp = (SensorSourceType)prof.sourceCmp;
+    gSystemState.sourceTps = (SensorSourceType)prof.sourceTps;
+    gSystemState.sourceMap = (SensorSourceType)prof.sourceMap;
+    gSystemState.sourceEct = (SensorSourceType)prof.sourceEct;
+    gSystemState.sourceIat = (SensorSourceType)prof.sourceIat;
+    gSystemState.sourceBattery = (SensorSourceType)prof.sourceBattery;
+    gSystemState.sourceCan = (SensorSourceType)prof.sourceCan;
     gSystemState.targetRpm = prof.targetRpm;
     gSystemState.crankPattern = (CrankPattern)prof.crankPattern;
     gSystemState.cmpEnabled = prof.cmpEnabled;

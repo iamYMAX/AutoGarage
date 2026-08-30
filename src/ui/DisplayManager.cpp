@@ -34,8 +34,13 @@ void DisplayManager::update() {
 
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.println("AutoGarage v2");
 
+    const char* modeStr = "SIM";
+    if (gSystemState.globalDataMode == MODE_LOOPBACK) modeStr = "LOOP";
+    else if (gSystemState.globalDataMode == MODE_REAL) modeStr = "REAL";
+    else if (gSystemState.globalDataMode == MODE_HYBRID) modeStr = "HYB";
+
+    display.printf("AutoGarage v2 [%s]\n", modeStr);
     display.printf("RPM: %u\n", gSystemState.currentRpm);
     display.printf("Bat: %.2fV\n", gSystemState.batteryVoltage);
     display.printf("CAN: %u frames\n", gSystemState.canFramesCount);

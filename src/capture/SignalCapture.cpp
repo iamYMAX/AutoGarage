@@ -13,7 +13,9 @@ bool SignalCapture::begin() {
     pinMode(PIN_CMP_IN, INPUT);
 
     attachInterrupt(digitalPinToInterrupt(PIN_CKP_IN), &SignalCapture::onCkpRisingIsr, RISING);
+    attachInterrupt(digitalPinToInterrupt(PIN_CKP_IN), &SignalCapture::onCkpFallingIsr, FALLING);
     attachInterrupt(digitalPinToInterrupt(PIN_CMP_IN), &SignalCapture::onCmpRisingIsr, RISING);
+    attachInterrupt(digitalPinToInterrupt(PIN_CMP_IN), &SignalCapture::onCmpFallingIsr, FALLING);
 
     enabled = true;
     return true;

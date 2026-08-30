@@ -17,7 +17,7 @@
 #define PIN_INJECTOR_3      17
 #define PIN_INJECTOR_4      25
 #define PIN_INJECTOR_5      26
-#define PIN_INJECTOR_6      33
+#define PIN_INJECTOR_6      13
 
 // Ignition
 #define PIN_IGNITION_COIL    32
@@ -30,19 +30,19 @@
 #define PIN_CAN_MOSI        23
 
 // SD Card
-#define PIN_SD_CS           13
+#define PIN_SD_CS           2
 
-// Analog Inputs
+// Analog Inputs (ADC1 Only)
 #define PIN_ADC_BATTERY     36
 #define PIN_ADC_CURRENT     39
-#define PIN_ADC_GEN_FB      33  // Moved to dedicated ADC1 channel
+#define PIN_ADC_GEN_FB      33
 
-// I2C
+// I2C (Display / RTC)
 #define PIN_I2C_SDA         21
 #define PIN_I2C_SCL         22
 
 // Encoder
-#define PIN_ENCODER_CLK     2
+#define PIN_ENCODER_CLK     12
 #define PIN_ENCODER_DT      0
 #define PIN_ENCODER_BTN     12
 

@@ -3,34 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engine Emulator Control</title>
+    <title>AutoGarage v2 Data Engine Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Engine Emulator Dashboard</h1>
+        <h1>AutoGarage v2 Engine Data Node</h1>
+        <div id="status-bar">
+            <span>Status: <strong id="connection-status">Connecting...</strong></span>
+            <span>Data Mode: <strong id="mode-display">SIMULATION</strong></span>
+        </div>
     </header>
-    <main>
-        <div class="widget-container">
-            <div class="widget">
-                <h2>RPM</h2>
-                <p id="rpm-value">--</p>
+
+    <main class="dashboard">
+        <section class="card">
+            <h2>Engine Telemetry</h2>
+            <div class="metric"><label>RPM:</label> <span id="rpm-val">--</span></div>
+            <div class="metric"><label>Battery Voltage:</label> <span id="vbat-val">--</span> V</div>
+            <div class="metric"><label>CAN Frames:</label> <span id="can-val">--</span></div>
+            <div class="metric"><label>Captured Events:</label> <span id="events-val">--</span></div>
+        </section>
+
+        <section class="card">
+            <h2>Data Source Mode Control</h2>
+            <div class="control-group">
+                <label for="mode-select">Global Data Mode:</label>
+                <select id="mode-select">
+                    <option value="0">SIMULATION</option>
+                    <option value="1">LOOPBACK</option>
+                    <option value="2">REAL</option>
+                    <option value="3">HYBRID</option>
+                </select>
+                <button id="set-mode-btn">Set Mode</button>
             </div>
-            <div class="widget">
-                <h2>Generator</h2>
-                <p>Mode: <span id="gen-mode">--</span></p>
-                <p>Duty: <span id="gen-duty">--</span>%</p>
+
+            <div class="control-group">
+                <label for="rpm-input">Set RPM Target:</label>
+                <input type="number" id="rpm-input" value="1000" min="100" max="8000" step="50">
+                <button id="set-rpm-btn">Apply RPM</button>
             </div>
-            <div class="widget">
-                <h2>System Status</h2>
-                <p id="wifi-status">Connecting...</p>
-            </div>
-        </div>
-        <div class="log-container">
-            <h2>Live Log</h2>
-            <pre id="log-box"></pre>
-        </div>
+        </section>
     </main>
+
     <script src="script.js"></script>
 </body>
 </html>

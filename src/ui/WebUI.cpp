@@ -25,6 +25,9 @@ bool WebUI::begin() {
                         uint32_t newRpm = doc["rpm"];
                         gCrankGenerator.setRpm(newRpm);
                     }
+                    if (doc.containsKey("dataMode")) {
+                        gSystemState.globalDataMode = (DataMode)((int)doc["dataMode"]);
+                    }
                 }
             }
         }
@@ -40,6 +43,7 @@ bool WebUI::begin() {
 void WebUI::setupRoutes() {
     server.on("/api/state", HTTP_GET, [](AsyncWebServerRequest *request) {
         StaticJsonDocument<512> doc;
+        doc["dataMode"] = (uint8_t)gSystemState.globalDataMode;
         doc["rpm"] = gSystemState.currentRpm;
         doc["crankPattern"] = (uint8_t)gSystemState.crankPattern;
         doc["crankEnabled"] = gSystemState.crankEnabled;
@@ -48,6 +52,16 @@ void WebUI::setupRoutes() {
         doc["canFramesCount"] = gSystemState.canFramesCount;
         doc["capturedEventsCount"] = gSystemState.capturedEventsCount;
         doc["sdCardReady"] = gSystemState.sdCardReady;
+
+        JsonObject sources = doc.createNestedObject("sources");
+        sources["ckp"] = (uint8_t)gSystemState.sourceCkp;
+        sources["cmp"] = (uint8_t)gSystemState.sourceCmp;
+        sources["tps"] = (uint8_t)gSystemState.sourceTps;
+        sources["map"] = (uint8_t)gSystemState.sourceMap;
+        sources["ect"] = (uint8_t)gSystemState.sourceEct;
+        sources["iat"] = (uint8_t)gSystemState.sourceIat;
+        sources["battery"] = (uint8_t)gSystemState.sourceBattery;
+        sources["can"] = (uint8_t)gSystemState.sourceCan;
 
         String response;
         serializeJson(doc, response);
@@ -70,6 +84,7 @@ void WebUI::broadcastState() {
     if (ws.count() == 0) return;
 
     StaticJsonDocument<256> doc;
+    doc["dataMode"] = (uint8_t)gSystemState.globalDataMode;
     doc["rpm"] = gSystemState.currentRpm;
     doc["vBat"] = gSystemState.batteryVoltage;
     doc["can"] = gSystemState.canFramesCount;
