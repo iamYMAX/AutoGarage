@@ -1,0 +1,42 @@
+name: Review Gate
+
+on:
+  push:
+    paths:
+      - '.github/reviews/**'
+  pull_request:
+    paths:
+      - '.github/reviews/**'
+
+jobs:
+  review_gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Evaluate Review Status
+        run: |
+          python -c "
+          import yaml, sys, os
+          review_file = '.github/reviews/current.yml'
+          if not os.path.exists(review_file):
+              print('Review file .github/reviews/current.yml not found.')
+              sys.exit(1)
+          with open(review_file) as f:
+              data = yaml.safe_load(f)
+          review = data.get('review', {})
+          status = str(review.get('status', 'pending')).lower()
+          if status != 'passed':
+              print(f'Review gate FAILED for {review_file}: status is {status}')
+              sys.exit(1)
+          print('Review Gate Status Passed.')
+          "

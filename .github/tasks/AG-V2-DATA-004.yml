@@ -1,0 +1,33 @@
+task:
+  id: "AG-V2-DATA-004"
+  title: "AutoGarage V2 Data Engine Implementation"
+  type: "feature"
+
+repository:
+  name: "iamYMAX/AutoGarage"
+
+branch:
+  name: "feature/autogarage-v2-data-engine-13158850612268727049"
+
+objective: "Implement AutoGarage v2 Data Engine supporting SIMULATION, LOOPBACK, REAL, and HYBRID modes."
+
+requirements:
+  - "11-channel EngineState pipeline"
+  - "Process SensorValue with microsecond timestamp, sequence, source, and quality"
+  - "Wildcard CI trigger in .github/workflows/main.yml"
+
+constraints:
+  - "Do not use GPIO 6-11"
+  - "Maintain microsecond timing"
+
+validation:
+  - "pio run"
+  - "pio run -t buildfs"
+
+acceptance:
+  - "pio run succeeds"
+  - "pio run -t buildfs succeeds"
+
+deliverables:
+  - "src/core/"
+  - ".github/workflows/main.yml"

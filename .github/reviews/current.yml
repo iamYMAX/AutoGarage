@@ -1,0 +1,17 @@
+review:
+  task_id: AG-V2-DATA-004
+
+  commit_sha: ""
+
+  status: pending
+
+  findings: []
+
+  checks:
+    build: pending
+    buildfs: pending
+    tests: pending
+    architecture: pending
+
+  decision:
+    action: pending
